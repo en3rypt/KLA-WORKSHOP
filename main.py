@@ -1,8 +1,7 @@
+import math
 
-import turning_function
 
-
-milestone = "Milestone 2"
+milestone = "Milestone 7"
 
 class checkPolygon:
     def __init__(self,srcPloygonPath,tempPloygonPath=None):
@@ -26,6 +25,24 @@ class checkPolygon:
             result.append((int(list[i]),int(list[i+1])))
         return result
 
+    @staticmethod 
+    def checkPolygon(srcPolygon,tempPolygon):
+        sl = []
+        kl = []
+        for i in range(len(srcPolygon)-1):
+            sl.append(math.sqrt((srcPolygon[i][1] - srcPolygon[i+1][1])**2 + (srcPolygon[i][0]-srcPolygon[i+1][0])**2))
+            kl.append(math.sqrt((tempPolygon[i][1] - tempPolygon[i+1][1])**2 + (tempPolygon[i][0]-tempPolygon[i+1][0])**2))
+            
+        return sorted(sl) == sorted(kl)
+        # if len(srcPolygon)!=len(tempPolygon):
+        #     print(srcPolygon,tempPolygon)
+        # for i in range(len(srcPolygon)-1):
+        #     sd = math.sqrt((srcPolygon[i][1] - srcPolygon[i+1][1])**2 + (srcPolygon[i][0]-srcPolygon[i+1][0])**2)
+        #     td = math.sqrt((tempPolygon[i][1] - tempPolygon[i+1][1])**2 + (tempPolygon[i][0]-tempPolygon[i+1][0])**2)
+            
+        #     if sd != td:
+        #         return False
+        # return True
     def loadtempData(self):
         pass
 
@@ -37,17 +54,15 @@ class checkPolygon:
         i = 0
         while i<len(srcData):
             if "layer" in srcData[i]:
-                try:
-                    d['layer'] = srcData[i].strip('\n')
-                except:
-                    print(srcData[i])
+                d['layer'] = srcData[i].strip('\n')
             elif 'xy' in srcData[i]:
+                d['points'] = srcData[i].strip('\n').split(" ")[2]
                 coordList = list(filter(None, srcData[i].strip('\n').split(" ")[3:]))
                 d["coordinates"] = checkPolygon.formCoord(coordList)
                 self.srcData.append(d)
                 d = {"layer":None,"coordinates":[]}
             i+=1
-        print(self.srcData[:5])
+        # print(self.srcData[:5])
 
     def loadData(self):
         self.loadsrcData()
@@ -59,42 +74,39 @@ class checkPolygon:
         with open(self.tempPolygonPath, 'r') as f:
             tempData = f.readlines()
         tempData = tempData[8:]
-        d = {"layer":None,"coordinates":[]}
+        d = {"layer":None,"points":None,"coordinates":[]}
         i = 0
         while i<len(tempData):
             if "layer" in tempData[i]:
-                try:
-                    d['layer'] = tempData[i].strip('\n')
-                except:
-                    print(tempData[i])
+                d['layer'] = tempData[i].strip('\n')
+            
             elif 'xy' in tempData[i]:
+                d['points'] = tempData[i].strip('\n').split(" ")[2]
                 coordList = list(filter(None, tempData[i].strip('\n').split(" ")[3:]))
                 d["coordinates"] = checkPolygon.formCoord(coordList)
                 self.tempData.append(d)
-                d = {"layer":None,"coordinates":[]}
+                d = {"layer":None,"points":None,"coordinates":[]}
             i+=1
         # print(self.tempData)
         
     def processData(self):
-
-
-        # for sidx,sploygon in enumerate(self.srcData):
-        #     for tidx,tploygon in enumerate(self.tempData):
-        #         if sploygon['layer'] == tploygon['layer']:
-        #             present = True
-        #             for coord in sploygon['coordinates']:
-        #                 if not coord in tploygon['coordinates']:
-        #                     present = False
-        #                     break
-        #                 if present:
-        #                     self.outData.append(sploygon)
+        c=0
+        for sidx,sploygon in enumerate(self.srcData):
+            for tidx,tploygon in enumerate(self.tempData):
+                if sploygon['layer'] == tploygon['layer'] and sploygon['points'] == tploygon['points']:
+                    if checkPolygon.checkPolygon(sploygon['coordinates'],tploygon['coordinates']):
+                        # print(f"[SYSTEM]: Polygon {sidx} and {tidx} are same")
+                        c+=1
+                        self.outData.append(sploygon)
+                    
+            
                             
         # print(self.outData)
         print("[SYSTEM]: Data Processed")
 
 
     def outputData(self):
-        self.outData = self.srcData[:2]
+        # self.outData = self.srcData[:2]
         # f"Output/{milestone}/output.txt"
         with open(f"Output/{milestone}/output.txt", 'w+') as f:
             t= True
@@ -106,7 +118,7 @@ class checkPolygon:
                     f.write("\nboundary\n")
                 f.write(line['layer']+'\n')
                 f.write("datatype 0\n")
-                coord = f'xy {len(line["coordinates"])} '
+                coord = f'xy  {len(line["coordinates"])} '
                 for i in line["coordinates"]:
                     coord += f' {i[0]} {i[1]} '
                 coord += '\n'
