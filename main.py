@@ -1,7 +1,9 @@
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-milestone = "Milestone 7"
+milestone = "Milestone 4"
 
 class checkPolygon:
     def __init__(self,srcPloygonPath,tempPloygonPath=None):
@@ -14,19 +16,47 @@ class checkPolygon:
     def display(self):
         print("[SYSTEM] Source Path: ",self.sourcePath)
         print("[SYSTEM] Temp Path: ",self.tempPolygonPath)
-        # print("[SYSTEM Src Data: ",self.srcData)
+        print("[SYSTEM Src Data: ",self.srcData)
         print("[SYSTEM temp Data: ",self.tempData)
         print("[SYSTEM] Output Data: ",self.outData)
 
+
     @staticmethod
-    def formCoord(list):
+    def plotPolygon(polygon1: list[tuple],polygon2=None) -> None:
+        p = []
+        # print(polygon1)
+        for i in polygon1:
+            p.append(i['coordinates'])
+        # print(polygon1)
+        x,x1 = [],[]
+        y,y1 = [],[]
+        for j in p:
+            x=[]
+            y=[]
+            for i in j:
+                x.append(i[0])
+                y.append(i[1])
+            plt.plot(x,y)
+        if polygon2:
+            for i in polygon2:
+                x1.append(i[0])
+                y1.append(i[1])
+
+            plt.plot(x1,y1)
+
+
+        plt.show()
+        
+
+    @staticmethod
+    def formCoord(list: list) -> list[tuple]:
         result = []
         for i in range(0,len(list),2):
             result.append((int(list[i]),int(list[i+1])))
-        return result
+        return result   
 
     @staticmethod 
-    def checkPolygon(srcPolygon,tempPolygon):
+    def checkPolygonDistance(srcPolygon: list[tuple],tempPolygon: list[tuple]) -> bool:
         sl = []
         kl = []
         for i in range(len(srcPolygon)-1):
@@ -34,18 +64,57 @@ class checkPolygon:
             kl.append(math.sqrt((tempPolygon[i][1] - tempPolygon[i+1][1])**2 + (tempPolygon[i][0]-tempPolygon[i+1][0])**2))
             
         return sorted(sl) == sorted(kl)
-        # if len(srcPolygon)!=len(tempPolygon):
-        #     print(srcPolygon,tempPolygon)
-        # for i in range(len(srcPolygon)-1):
-        #     sd = math.sqrt((srcPolygon[i][1] - srcPolygon[i+1][1])**2 + (srcPolygon[i][0]-srcPolygon[i+1][0])**2)
-        #     td = math.sqrt((tempPolygon[i][1] - tempPolygon[i+1][1])**2 + (tempPolygon[i][0]-tempPolygon[i+1][0])**2)
-            
-        #     if sd != td:
-        #         return False
-        # return True
-    def loadtempData(self):
-        pass
 
+    @staticmethod
+    def polygon_area(vertices: list[tuple]) -> float:
+        vertices = vertices[:len(vertices)-1]
+        n = len(vertices)
+        area = 0.0
+        for i in range(n):
+            j = (i + 1) % n
+            area += vertices[i][0] * vertices[j][1]
+            area -= vertices[j][0] * vertices[i][1]
+        area = abs(area) / 2.0
+        
+        return area
+    @staticmethod
+    def pAngles(vertices: list[tuple])-> list[float]:
+        angles = []
+        n = len(vertices)
+        for i in range(n):
+
+            p1 = vertices[i]
+            p2 = vertices[(i+1) % n]
+            p3 = vertices[(i+2) % n]
+            # print(p1,p2,p3)
+            a = math.sqrt((p2[1]-p1[1])**2 + (p2[0]-p1[0])**2)
+            b = math.sqrt((p3[1]-p2[1])**2 + (p3[0]-p2[0])**2)
+            c = math.sqrt((p3[1]-p1[1])**2 + (p3[0]-p1[0])**2)
+            try:
+                angle = math.degrees(math.acos((a**2 + b**2 - c**2) / (2 * a * b)))
+                # print(angle)
+            except:
+                pass
+            # angles.append(angle)
+        angles.sort()
+        return angles
+
+    @staticmethod
+    def pointAngle(points: list[tuple]) -> list[float]:
+        # l = np.array(l[:len(l)-1])
+        points = np.array(points[:len(points)-1])
+        points.shape = (-1, 2)
+        a = points - np.roll(points, 1, axis=0)
+        b = np.roll(a, -1, axis=0)
+
+        alengths = np.linalg.norm(a, axis=1)
+        blengths = np.linalg.norm(b, axis=1)
+        crossproducts = np.cross(a, b) / alengths / blengths
+
+        angles = np.arcsin(crossproducts)
+        angles_degrees = angles / np.pi * 180
+        return sorted(angles_degrees)
+    
     def loadsrcData(self):
         with open(self.sourcePath, 'r') as f:
             srcData = f.readlines()
@@ -87,27 +156,26 @@ class checkPolygon:
                 self.tempData.append(d)
                 d = {"layer":None,"points":None,"coordinates":[]}
             i+=1
+        # checkPolygon.plotPolygon(self.tempData)
         # print(self.tempData)
-        
+
     def processData(self):
         c=0
         for sidx,sploygon in enumerate(self.srcData):
             for tidx,tploygon in enumerate(self.tempData):
-                if sploygon['layer'] == tploygon['layer'] and sploygon['points'] == tploygon['points']:
-                    if checkPolygon.checkPolygon(sploygon['coordinates'],tploygon['coordinates']):
+                if sploygon['layer'] == tploygon['layer'] and sploygon['points'] == tploygon['points'] and checkPolygon.checkPolygonDistance(sploygon["coordinates"], tploygon['coordinates']) and (checkPolygon.pointAngle(sploygon['coordinates']) == checkPolygon.pointAngle(tploygon['coordinates'])) and (checkPolygon.polygon_area(sploygon['coordinates']) == checkPolygon.polygon_area(tploygon['coordinates'])):
+                    
                         # print(f"[SYSTEM]: Polygon {sidx} and {tidx} are same")
-                        c+=1
+                        # checkPolygon.plotPolygon(self.tempData,sploygon['coordinates'])
                         self.outData.append(sploygon)
+                        break
                     
             
                             
-        # print(self.outData)
-        print("[SYSTEM]: Data Processed")
+        print(f"[SYSTEM]: Data Processed {len(self.outData)}")
 
 
     def outputData(self):
-        # self.outData = self.srcData[:2]
-        # f"Output/{milestone}/output.txt"
         with open(f"Output/{milestone}/output.txt", 'w+') as f:
             t= True
             for line in self.outData:
